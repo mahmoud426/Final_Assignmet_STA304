@@ -1,1 +1,2 @@
 # Final_Assignmet_STA304
+This repo contains the data, code and licences for the paper "To what extent did the introduction of TV advertisements in 1968 cause French newspapers to price discriminate?" by Mahmoud Elsheikh. The purpose of this paper is to reproduce the paper "Newspapers in times of low advertising revenues" Angelucci Charles and Julia Cage 2019 American Economic Journal: Microeconomics. The repo contains the inputs, outputs, scripts and licenses ultilized in the production of the paper.
