@@ -1,0 +1,249 @@
+---
+title: <center>Code for "To what extent did the introduction of TV advertisements in 1968 cause French
+  newspapers to price discriminate?"
+author: "Mahmoud Elsheikh"
+date: "December 22, 2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+Keywords: "OLS, ratio, revenue, second-degree, subsctiption-based, predictor, RSS, P-value"
+header-includes: \usepackage{}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = TRUE)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+library(kableExtra)
+library(haven)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(qwraps2)
+library(knitr)
+library(table1)
+library(tinytex)
+library(latexpdf)
+library(base)
+library(huxtable)
+library(scales)
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+
+# Code
+
+main_dataset <- read_stata("/Users/mahmoudelsheikh/Desktop/STA304 Final Project/116438-V1/data/dta/main_dataset.dta")
+
+maindata <- read_stata("/Users/mahmoudelsheikh/Desktop/STA304 Final Project/116438-V1/data/dta/main_dataset.dta")
+
+# Dividing the subscription price by the unit price to obtain the price ratio 
+main_dataset$price_ratio <- main_dataset$ln_ps_cst / main_dataset$ln_po_cst
+
+# Adding a share of unit buyers to the data set
+main_dataset$unit_p <- 100- main_dataset$qs_s
+
+main_dataset$year <- as.integer(main_dataset$year)
+
+#Removing NA's from the data set
+main_dataset <- main_dataset[!is.na(main_dataset$price_ratio),]
+main_dataset <- main_dataset[!is.na(main_dataset$ra_cst),]
+main_dataset <- main_dataset[!is.na(main_dataset$ra_s),]
+
+# Creating summary statistics table
+
+table1::label(main_dataset$po_cst) <- "Unit Price"
+table1::label(main_dataset$ps_cst) <- "Subscription Price"
+table1::label(main_dataset$price_ratio) <- "Price Ratio"
+table1::label(main_dataset$ra_s) <- "Share of advertising revenues (%)"
+table1::label(main_dataset$qs_s) <- "Share of subscribers (%)"
+table1::label(main_dataset$unit_p) <- "Share of unit buyers (%)"
+table1::table1(~po_cst + ps_cst + price_ratio + ra_s + qs_s + ps_cst + unit_p, data = main_dataset)
+
+table6 <- table1::table1(~po_cst + ps_cst + price_ratio + ra_s + qs_s + ps_cst + unit_p, data = main_dataset)
+
+
+## Both Newspapers
+both_news_ratio <- subset(main_dataset, main_dataset$year >= 1960, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, po_cst, ps_cst, ra_s, qs_s))
+both_news_avg <- aggregate(both_news_ratio[, 1:10], list(both_news_ratio$year), mean)
+
+## Local Newspapers
+
+# Creating a data set combining all local newspapers data
+local_news_ratio <- subset(main_dataset, main_dataset$year >= 1960 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_avg <- aggregate(local_news_ratio[, 1:9], list(local_news_ratio$year), mean)
+
+
+
+# Creating a data set combining all local newspapers data pre introduction of advertisements on TV (1966-1968)
+local_news_ratio_pre_ads <- subset(main_dataset, main_dataset$year >= 1966 & main_dataset$year <= 1968 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_pre_ads_avg <- aggregate(local_news_ratio_pre_ads[, 1:9], list(local_news_ratio_pre_ads$year), mean)
+
+# Creating a data set combining all local newspapers data in the short-run introduction of advertisements on TV (1969-1971)
+local_news_ratio_short_ads <- subset(main_dataset, main_dataset$year >= 1969 & main_dataset$year <= 1971 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_short_ads_avg <- aggregate(local_news_ratio_short_ads[, 1:9], list(local_news_ratio_short_ads$year), mean)
+
+# Creating a data set combining all local newspapers data in the long-run introduction of advertisements on TV (1972+)
+local_news_ratio_long_ads <- subset(main_dataset, main_dataset$year >= 1972 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_long_ads_avg <- aggregate(local_news_ratio_long_ads[, 1:9], list(local_news_ratio_long_ads$year), mean)
+
+
+
+
+## National newspapers
+
+# Creating a data set combining all national newspapers data 
+national_news_ratio <- subset(main_dataset, main_dataset$year >= 1960 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_avg <- aggregate(national_news_ratio[, 1:9], list(national_news_ratio$year), mean, drop = TRUE)
+
+# Creating a data set combining all national newspapers data pre introduction of advertisements on TV (1966-1968)
+national_news_ratio_pre_ads <- subset(main_dataset, main_dataset$year >= 1966 & main_dataset$year <= 1968 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_pre_ads_avg <- aggregate(national_news_ratio_pre_ads[, 1:9], list(national_news_ratio_pre_ads$year), mean, drop = TRUE)
+
+# Creating a data set combining all national newspapers data in the short-run introduction of advertisements on TV (1969-1971)
+national_news_ratio_short_ads <- subset(main_dataset, main_dataset$year >= 1969 & main_dataset$year <= 1971 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_short_ads_avg <- aggregate(national_news_ratio_short_ads[, 1:9], list(national_news_ratio_short_ads$year), mean, drop = TRUE)
+
+# Creating a data set combining all national newspapers data in the long-run introduction of advertisements on TV (1972+)
+national_news_ratio_long_ads <- subset(main_dataset, main_dataset$year >= 1972 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_long_ads_avg <- aggregate(national_news_ratio_long_ads[, 1:9], list(national_news_ratio_long_ads$year), mean, drop = TRUE)
+
+
+# Effect of decrease in advertisement revenue on price ratios
+combined_price_ratio <- data.frame(national_news_pre_ads_avg$price_ratio, local_news_pre_ads_avg$price_ratio, national_news_short_ads_avg)
+
+combined_price_ratio1 <- data.frame(national_news_avg$price_ratio, local_news_avg$price_ratio, national_news_avg$Group.1)
+
+
+
+# A least square regression model 
+lmodel_national <- lm(price_ratio ~ Group.1, data = national_news_avg)
+lmodel_local <- lm(price_ratio ~ Group.1, data = local_news_avg)
+
+# Combined newspaper linear regression model
+lmodel_combined <- lm(formula = price_ratio ~ year + qs_s + ra_s + ra_cst, data = both_news_ratio)
+
+# National newspaper linear regression model post 1968
+national_news_ratio_post1968 <- subset(main_dataset, main_dataset$year >= 1968 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_avg_post1968 <- aggregate(national_news_ratio_post1968[, 1:9], list(national_news_ratio_post1968$year), mean, drop = TRUE)
+
+local_news_ratio_post1968 <- subset(main_dataset, main_dataset$year >= 1968 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_avg_post1968 <- aggregate(local_news_ratio_post1968[, 1:9], list(local_news_ratio_post1968$year), mean, drop = TRUE)
+
+lmodel_national_post1968 <- lm(price_ratio ~ year + ra_cst + ra_s + qs_s, data = national_news_ratio_post1968)
+
+lmodel_local_post1968 <- lm(price_ratio ~ year + ra_cst + ra_s + qs_s, data = local_news_ratio_post1968)
+
+# Least square regression models for local and national newspapers in each period
+lmodel_national_pre_ads <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = national_news_ratio_pre_ads)
+
+lmodel_local_pre_ads <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = local_news_ratio_pre_ads)
+
+lmodel_national_short <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = national_news_ratio_short_ads)
+
+lmodel_local_short <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = local_news_ratio_short_ads)
+
+lmodel_national_long <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = national_news_ratio_long_ads)
+
+lmodel_local_long <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = local_news_ratio_long_ads)
+
+# Table 1: National and Local newspaper models post 1968
+table1 <- tab_model(lmodel_national_post1968, lmodel_local_post1968,
+  dv.labels = c('National Newspapers Post 1968','Local Newspapers Post 1968'),
+  pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)')
+  )
+
+# Table 2: National and Local newspaper model pre TV advertisements (1966-1968)
+table2 <- tab_model(lmodel_national_pre_ads, lmodel_local_pre_ads,
+                    dv.labels = c("National Pre TV Ads", "Local Pre TV Ads"),
+                      pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)'))
+table2
+
+# Table 3: National and Local newspaper model in the short-run period of TV advertisements introduction (1969-1971)
+table3 <- tab_model(lmodel_national_short, lmodel_local_short,
+                    dv.labels = c("National Short-run TV Ads", "Local Short-run TV Ads"),
+                    pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)'))
+table3
+
+# Table 4: National and Local newspaper model in the long-run period of TV advertisements introduction (1972-1974)
+table4 <- tab_model(lmodel_national_long, lmodel_local_long,
+                    dv.labels = c("National Long-run TV Ads", "Local Long-run TV Ads"),
+                    pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)'))
+table4
+
+
+combined_news_avg <- data.frame(national_news_avg$Group.1, national_news_avg$price_ratio, local_news_avg$price_ratio, national_news_avg$ra_cst, local_news_avg$ra_s)
+
+# Graph of share of advertising revenues for local and national newspapers
+graph1 <- ggplot(data=combined_news_avg, aes(x = national_news_avg.Group.1, y = national_news_avg.ra_s)) +
+  geom_line(aes( y = national_news_avg$ra_s, color="deepskyblue1", alpha=0.5)) +
+  geom_line(aes( y = local_news_avg$ra_s, color="#69b3a2", alpha=0.5)) +
+  labs(title = "National VS Private Newspaper Advertisment Revenue", y = "Share of Advertising Revenue (%)", x = "Year") +
+  scale_color_discrete(name = "Key", labels = c("Local Newspapers", "National Newspapers"))
+
+graph1
+
+# Graph of newspaper price ratio over time
+graph2 <- ggplot(data=combined_news_avg, aes(x = national_news_avg.Group.1, y = national_news_avg.price_ratio)) +
+  geom_line(aes( y = national_news_avg.price_ratio, color="deepskyblue1", alpha=0.5)) +
+  geom_line(aes( y = local_news_avg.price_ratio, color="#69b3a2", alpha=0.5)) +
+  labs(title = "National VS Private Price Ratio", y = "Price Ratio", x = "Year") +
+  scale_color_discrete(name = "Key", labels = c("Local Newspapers", "National Newspapers"))
+
+graph2
+
+# Residual plot for local newspapers post-1968 model
+graph3 <- plot(lmodel_local_post1968, which =1, main = "Residual plot for local newspapers post-1968 model", sub.caption= NA, caption = NA)
+
+graph3
+
+# Residual plot for national newspapers post-1968 model
+graph4 <- plot(lmodel_national_post1968, which =1, main = "Residual plot for national newspapers post-1968 model", sub.caption= NA, caption = NA)
+
+graph4
+
+# Plot of advertising revenues share for local and national newspapers
+graph5 <- (main_dataset %>% 
+  mutate(type = if_else(local == 1, "Local", "National")) %>% 
+  ggplot(aes(x = year, y = ra_s)) +
+  geom_point(alpha = 0.5) +
+  scale_y_continuous() +
+  labs(title = "Plot of advertising revenues share for local and national newspapers",
+      x = "Year",
+       y = "Share of Advertising Revenues (%)") +
+  facet_wrap(vars(type),
+               nrow = 2) +
+  theme_minimal() +
+  geom_vline(xintercept = 1955.5, linetype = "dashed"))
+
+graph5
+
+# Graph of price ratio vs advertising revenue
+graph6 <- ggplot(lmodel_combined,aes(y = price_ratio,x = 100-ra_s))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  ylim(0.5,1.2)+
+  labs(title = "Price ratio VS share of advertising revenue", y = "Price Ratio", x = "Share of Advertising Revenue (%)") 
+
+graph6
+```
+
+
+
+
+
+

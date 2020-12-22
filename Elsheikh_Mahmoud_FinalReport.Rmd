@@ -1,0 +1,537 @@
+---
+title: <center>To what extent did the introduction of TV advertisements in 1968 cause French
+  newspapers to price discriminate?
+author: "Mahmoud Elsheikh"
+date: "December 22, 2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+Keywords: "OLS, ratio, revenue, second-degree, subsctiption-based, predictor, RSS, P-value"
+header-includes: \usepackage{}
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = TRUE)
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+library(kableExtra)
+library(haven)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(qwraps2)
+library(knitr)
+library(table1)
+library(tinytex)
+library(latexpdf)
+library(base)
+library(huxtable)
+library(scales)
+```
+
+
+```{r include=FALSE}
+
+# Code
+
+main_dataset <- read_stata("/Users/mahmoudelsheikh/Desktop/STA304 Final Project/116438-V1/data/dta/main_dataset.dta")
+
+maindata <- read_stata("/Users/mahmoudelsheikh/Desktop/STA304 Final Project/116438-V1/data/dta/main_dataset.dta")
+
+# Dividing the subscription price by the unit price to obtain the price ratio 
+main_dataset$price_ratio <- main_dataset$ln_ps_cst / main_dataset$ln_po_cst
+
+# Adding a share of unit buyers to the data set
+main_dataset$unit_p <- 100- main_dataset$qs_s
+
+main_dataset$year <- as.integer(main_dataset$year)
+
+#Removing NA's from the data set
+main_dataset <- main_dataset[!is.na(main_dataset$price_ratio),]
+main_dataset <- main_dataset[!is.na(main_dataset$ra_cst),]
+main_dataset <- main_dataset[!is.na(main_dataset$ra_s),]
+
+# Creating summary statistics table
+
+
+
+table1::label(main_dataset$po_cst) <- "Unit Price"
+table1::label(main_dataset$ps_cst) <- "Subscription Price"
+table1::label(main_dataset$price_ratio) <- "Price Ratio"
+table1::label(main_dataset$ra_s) <- "Share of advertising revenues (%)"
+table1::label(main_dataset$qs_s) <- "Share of subscribers (%)"
+table1::label(main_dataset$unit_p) <- "Share of unit buyers (%)"
+table1::table1(~po_cst + ps_cst + price_ratio + ra_s + qs_s + ps_cst + unit_p, data = main_dataset)
+
+table6 <- table1::table1(~po_cst + ps_cst + price_ratio + ra_s + qs_s + ps_cst + unit_p, data = main_dataset)
+
+
+## Both Newspapers
+both_news_ratio <- subset(main_dataset, main_dataset$year >= 1960, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, po_cst, ps_cst, ra_s, qs_s))
+both_news_avg <- aggregate(both_news_ratio[, 1:10], list(both_news_ratio$year), mean)
+
+## Local Newspapers
+
+# Creating a data set combining all local newspapers data
+local_news_ratio <- subset(main_dataset, main_dataset$year >= 1960 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_avg <- aggregate(local_news_ratio[, 1:9], list(local_news_ratio$year), mean)
+
+
+
+# Creating a data set combining all local newspapers data pre introduction of advertisements on TV (1966-1968)
+local_news_ratio_pre_ads <- subset(main_dataset, main_dataset$year >= 1966 & main_dataset$year <= 1968 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_pre_ads_avg <- aggregate(local_news_ratio_pre_ads[, 1:9], list(local_news_ratio_pre_ads$year), mean)
+
+# Creating a data set combining all local newspapers data in the short-run introduction of advertisements on TV (1969-1971)
+local_news_ratio_short_ads <- subset(main_dataset, main_dataset$year >= 1969 & main_dataset$year <= 1971 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_short_ads_avg <- aggregate(local_news_ratio_short_ads[, 1:9], list(local_news_ratio_short_ads$year), mean)
+
+# Creating a data set combining all local newspapers data in the long-run introduction of advertisements on TV (1972+)
+local_news_ratio_long_ads <- subset(main_dataset, main_dataset$year >= 1972 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_long_ads_avg <- aggregate(local_news_ratio_long_ads[, 1:9], list(local_news_ratio_long_ads$year), mean)
+
+
+
+
+## National newspapers
+
+# Creating a data set combining all national newspapers data 
+national_news_ratio <- subset(main_dataset, main_dataset$year >= 1960 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_avg <- aggregate(national_news_ratio[, 1:9], list(national_news_ratio$year), mean, drop = TRUE)
+
+# Creating a data set combining all national newspapers data pre introduction of advertisements on TV (1966-1968)
+national_news_ratio_pre_ads <- subset(main_dataset, main_dataset$year >= 1966 & main_dataset$year <= 1968 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_pre_ads_avg <- aggregate(national_news_ratio_pre_ads[, 1:9], list(national_news_ratio_pre_ads$year), mean, drop = TRUE)
+
+# Creating a data set combining all national newspapers data in the short-run introduction of advertisements on TV (1969-1971)
+national_news_ratio_short_ads <- subset(main_dataset, main_dataset$year >= 1969 & main_dataset$year <= 1971 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_short_ads_avg <- aggregate(national_news_ratio_short_ads[, 1:9], list(national_news_ratio_short_ads$year), mean, drop = TRUE)
+
+# Creating a data set combining all national newspapers data in the long-run introduction of advertisements on TV (1972+)
+national_news_ratio_long_ads <- subset(main_dataset, main_dataset$year >= 1972 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_long_ads_avg <- aggregate(national_news_ratio_long_ads[, 1:9], list(national_news_ratio_long_ads$year), mean, drop = TRUE)
+
+
+# Effect of decrease in advertisement revenue on price ratios
+combined_price_ratio <- data.frame(national_news_pre_ads_avg$price_ratio, local_news_pre_ads_avg$price_ratio, national_news_short_ads_avg)
+
+combined_price_ratio1 <- data.frame(national_news_avg$price_ratio, local_news_avg$price_ratio, national_news_avg$Group.1)
+
+
+
+# A least square regression model 
+lmodel_national <- lm(price_ratio ~ Group.1, data = national_news_avg)
+lmodel_local <- lm(price_ratio ~ Group.1, data = local_news_avg)
+
+# Combined newspaper linear regression model
+lmodel_combined <- lm(formula = price_ratio ~ year + qs_s + ra_s + ra_cst, data = both_news_ratio)
+
+
+# National newspaper linear regression model post 1968
+national_news_ratio_post1968 <- subset(main_dataset, main_dataset$year >= 1968 & main_dataset$local == 0, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+national_news_avg_post1968 <- aggregate(national_news_ratio_post1968[, 1:9], list(national_news_ratio_post1968$year), mean, drop = TRUE)
+
+local_news_ratio_post1968 <- subset(main_dataset, main_dataset$year >= 1968 & main_dataset$local == 1, select=c(rtotal_cst, price_ratio, local, ln_po_cst, id_news, year, ra_cst, ra_s, qs_s))
+
+local_news_avg_post1968 <- aggregate(local_news_ratio_post1968[, 1:9], list(local_news_ratio_post1968$year), mean, drop = TRUE)
+
+lmodel_national_post1968 <- lm(price_ratio ~ year + ra_cst + ra_s + qs_s, data = national_news_ratio_post1968)
+
+lmodel_local_post1968 <- lm(price_ratio ~ year + ra_cst + ra_s + qs_s, data = local_news_ratio_post1968)
+
+# Least square regression models for local and national newspapers in each period
+lmodel_national_pre_ads <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = national_news_ratio_pre_ads)
+
+lmodel_local_pre_ads <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = local_news_ratio_pre_ads)
+
+lmodel_national_short <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = national_news_ratio_short_ads)
+
+lmodel_local_short <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = local_news_ratio_short_ads)
+
+lmodel_national_long <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = national_news_ratio_long_ads)
+
+lmodel_local_long <- lm(formula = price_ratio ~ year + ra_cst + ra_s + qs_s,  data = local_news_ratio_long_ads)
+
+table2 <- tab_model(lmodel_national_pre_ads, lmodel_local_pre_ads,
+                    dv.labels = c("National Pre TV Ads", "Local Pre TV Ads"),
+                      pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)'))
+
+table3 <- tab_model(lmodel_national_short, lmodel_local_short,
+                    dv.labels = c("National Short-run TV Ads", "Local Short-run TV Ads"),
+                    pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)'))
+
+table4 <- tab_model(lmodel_national_long, lmodel_local_long,
+                    dv.labels = c("National Long-run TV Ads", "Local Long-run TV Ads"),
+                    pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)'))
+
+table1 <- tab_model(lmodel_national_post1968, lmodel_local_post1968,
+  dv.labels = c('National Newspapers Post 1968','Local Newspapers Post 1968'),
+  pred.labels = c('Intercept','Year','Advertising Revenues','Share Of Advertising Revenues(%)','Share of subscribers(%)')
+  )
+
+combined_news_avg <- data.frame(national_news_avg$Group.1, national_news_avg$price_ratio, local_news_avg$price_ratio, national_news_avg$ra_cst, local_news_avg$ra_s)
+
+# Graph of share of advertising revenues for local and national newspapers
+graph1 <- ggplot(data=combined_news_avg, aes(x = national_news_avg.Group.1, y = national_news_avg.ra_s)) +
+  geom_line(aes( y = national_news_avg$ra_s, color="deepskyblue1", alpha=0.5)) +
+  geom_line(aes( y = local_news_avg$ra_s, color="#69b3a2", alpha=0.5)) +
+  labs(title = "National VS Private Newspaper Advertisment Revenue", y = "Share of Advertising Revenue (%)", x = "Year") +
+  scale_color_discrete(name = "Key", labels = c("Local Newspapers", "National Newspapers"))
+
+# Graph of newspaper price ratio over time
+graph2 <- ggplot(data=combined_news_avg, aes(x = national_news_avg.Group.1, y = national_news_avg.price_ratio)) +
+  geom_line(aes( y = national_news_avg.price_ratio, color="deepskyblue1", alpha=0.5)) +
+  geom_line(aes( y = local_news_avg.price_ratio, color="#69b3a2", alpha=0.5)) +
+  labs(title = "National VS Private Price Ratio", y = "Price Ratio", x = "Year") +
+  scale_color_discrete(name = "Key", labels = c("Local Newspapers", "National Newspapers"))
+
+# Graph of price ratio vs advertising revenue
+graph6 <- ggplot(lmodel_combined,aes(y = price_ratio,x = 100-ra_s))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  ylim(0.5,1.2)+
+  labs(title = "Price ratio VS share of advertising revenue", y = "Price Ratio", x = "Share of Advertising Revenue (%)") 
+```
+
+# Abstract
+
+In this paper, I have reproduced a paper written by Charles Angelucci and Julia Cage (Angelucci, C., and J. Cage (2017)) exploring the implications on newspapers during times of low advertising revenues. This paper focuses on the determinants of second-degree price discrimination in the two-sided market between advertisers and subscribers. The aim of the experiment is to analyze advertisers' preferences towards subscribers and occasional buyers of newspapers given their circumstances. Given the projected decline in newspaper advertising revenue as a result of the COVID-19 pandemic (Freddy, 2020), the findings can be used to anticipate the way in which newspapers will react to this shock. My model finds a link between increased price discrimination and a fall in advertising revenue; however, the extent to which this occurs differs based on newspaper types.
+
+
+
+
+# Introduction
+
+Newspapers have two main consumers to worry about – readers and advertisers. Both groups directly affect each other and influence the way in which the newspaper responds to changes in demand. The main method of price discrimination utilized by newspapers is to the second-degree between subscribers and occasional buyers. Subscribers receive a lower unit cost for newspapers; however, the appeal for subscriptions is more than just lowers costs. “subscription allows consumers to avoid the moving costs inherent to arranging separately at the newsstand: The higher the moving cost, the more attractive the subscription’s opportunity.” (Gabszewicz, Jean T, 1999). The second-degree price discrimination occurs when the newspaper reduces its price ratio in an attempt to increase the relative number of subscribers to maximize profits.
+
+The industry tends towards a more subscription-based consumer base during periods of declining revenue. This is achieved by making the subscription price cheaper relative to the unit price. The statistic used to represent this difference is the price ratio obtained by dividing the subscription cost per issue by the unit cost per issue. This paper will aim to reproduce Angelucci and Cage’s hypothesis that there is a correlation between decreasing advertising revenue and an incentive to increase subscription-based sales of newspapers.
+
+I focus on finding the relationship between declining advertising revenues and the price discrimination practiced by the newspapers. This is more relevant than ever in 2020 as the COVID-19 pandemic is forcing many firms to reduce their spending on advertising. PricewaterhouseCooper's (PWC) media outlook report 2020-2024 claims "The figures show that at a global and national level print revenues will continue to fall faster and further than digital growth can offset" (Freddy, 2020). This shock will be similar to that of the introduction of french television and we should anticipate a similar reaction from the newspapers. 
+
+I will reproduce the data through the utilization of multiple ordinary least squares (OLS) models to find the correlation between the price ratio against advertising revenues, the share of advertising revenues, and the share of subscribers over three time periods for local and national newspapers. The three periods will be the pre TV advertisement period (1966-1969), the short-run TV advertisement period (1969-1971), and the long-run TV advertisement period (1970-1974). These least squares regression models will allow us to understand the way in which price discrimination is practiced in the three periods for local and national newspapers. 
+
+<br><br>
+
+# Data
+The data set used in the researchers' paper was the annual balanced panel data set on local and national newspapers in France between 1960 and 1974. The data was obtained from the French Ministry of Information's records in the National archives in paper form and was digitized into data sets by the researchers. The main data set consists of 1196 observations of 52 variables obtained regarding 61 local French newspapers and 10 national newspapers. The data set is strong in that it covers a significant proportion of our population of interest (All french newspapers in circulation) as it covers over 87% of the total daily newspaper circulation. This means that our sample is highly representative of the population and will allow us to extrapolate our findings to the population. 
+
+The financial data collected for these newspapers consisted of the subscription price, unit prices, annual issues, costs, and revenues from 1960 to 1974. These variables allow us to develop an understanding of the price discrimination exercised in the period. The advertising data collected consists of the price and quantity of advertising for each newspaper. This allows for differentiation between the two variables when understanding how advertising was affected in the period. This data regarding advertising slot prices were obtained from a French publication for advertising prices “Tarifs Presse”. This data can be slightly unreliable as this does not account for discounts which are common throughout the industry and particularly with larger newspapers. 
+
+To account for this bias, I utilize a variety of existing variables in my model correlated to advertising revenues such as the proportion of advertising revenues to find more accurate estimates. A more accurate estimate for advertising prices was obtained by dividing the total advertising revenues by the newspaper circulation. I then calculate an average advertising price by dividing the total advertising revenues by the average advertisements per newspaper issue multiplied by the total number of issues. For each year and newspaper, two randomly selected issues are obtained and the average quantity of advertisements on each page is calculated. This gives an accurate estimate of the total advertisements in the newspaper and the portion of the newspaper allocated to advertising.
+
+One limitation of the data set is that there is a disproportionate number of observations for national newspapers (10) relative to local newspapers (61). This means that the model is less accurate in finding local newspaper correlations than national newspapers. This is evident in tables 2-4 as there are 25-33 observations for national newspapers in the three periods vs 184-195 observations for the local newspapers. Another limitation of the data set is the method of data collection. Digitizing 1196 observations from paper format can lead to typos or errors in the data set. This could have slight yet significant implications when attempting to model the data. Another issue when dealing with revenue statistics over time is that they are not adjusted for inflation. This means that revenue results are inaccurate when making time-based analysis as inflation varied between 3%-8% annually from 1960-1974 (MacroTrends,2020).
+
+<div align="center">
+### Table 6: Summary statistics
+ </div>
+
+
+<div align="center">
+```{r echo=FALSE, results='asis'}
+table6
+```
+ </div>
+
+
+
+<br>
+
+The summary statistics of the main data set show the mean, standard deviation, median, minimum and maximum values of the significant variables of the data set. This is the researcher's data set adjusted by removing NA's and adding relevant variables such as price ratio and share of unit buyers. You can see that the mean unit price is higher than the mean subscription price by 46 cents, making the mean price ratio 0.843. This means that that the mean unit purchaser is paying 18% more per unit. This statistic represents the mean price ratio across all newspapers throughout the 14 year period. We will be focusing on this variable throughout the paper as a measure of the level of price discrimination exhibited by the newspapers. As the price ratio decreases, the difference between the unit price and subscription price increases implying that the newspaper is attempting to increase the number of subscribers relative to unit purchasers via price discrimination.  
+
+
+
+
+
+<br><br>
+
+
+# Model
+
+<br>
+
+
+
+
+$$\begin{aligned}
+Equation 1:& y_i = b_1X_{1i} + b_2X_2i + …  b_{kX}k_i ,    &&   k = 1, 2, … n \\
+Equation 2:&  r_i = y_i - (\widehat{\alpha} + \widehat{b}x_i)\\
+Equation 3:&  RSS = \sum_{i=1}^N (y_i - (\widehat{\alpha} + \widehat{b}x_i))\\
+Equation 4:&  \widehat{\beta} = (X^tX)^{-1}
+\end{aligned}$$
+
+
+
+<center>
+<h2>
+$$\begin{aligned} y_i = b_1X_{1i} + b_2X_{2i} + …  b_kX_{ki} ,    &&   k = 1, 2, … n\end{aligned}$$
+</center>
+
+<br><br>
+
+For my model, I utilized an ordinary least square regression (OLS) model using the linear model function in R. An OLS model fundamentally finds the posterior distributions through a line of best fit that tests a correlation between the given variables. Carl Friedrich Gauss originally derived the OLS procedure in a Bayesian framework (McElreath, 2020) as all probability was Bayesian at the time. The OLS approximates a Bayesian treatment and produces very similar results for the estimate coefficient β (see Equation 4). A Bayesian model would be a viable model option for this model; however, a Bayesian model results in a posterior density estimation as opposed to traditional confidence intervals and hypothesis tests of the OLS model that are relevant for this model.
+
+The equation above (Equation 1) is utilized for this model in order to analyze the correlation between the response variable and the predictor variables. In equation 1, the value yᵢ represents the response variable of the price ratio and biXi represents my predictor variables. My variable of interest (yᵢ) is the price ratio of the newspapers and the predictor variables (biXi) are the year, advertising revenue, share of advertising revenues, and share of subscribers. I used these predictor variables as they are all correlated with the price ratio. As the year increases within each time period, the price ratio should decrease as a result of the substitution effect of advertising revenues to TV. Advertising revenues and the share of advertising revenues should be positively correlated to the price ratio (see graph 5) as price discrimination increase in times of low advertising revenues. The share of subscribers should be negatively correlated to the price ratio according to the economic principles of second-degree price discrimination as more consumers subscribe as the relative price difference increases. 
+
+The model finds a line of best fit such that a and bxᵢ are estimated in a way to minimize errors (∈). In equation 2, rᵢ represents the value of the residual (∈) that is minimized to find the most accurate correlation. The residual sum of squares (RSS) is what is being minimized in the models as I am using multiple predictor variables. The equation for the RSS (Equation 3) is the squared sum of residuals (Equation 2) representing the squared sum of each predictor variable. In my model, â represents the price ratio and bi represents the year, advertising revenue, share of advertising revenues, and share of subscribers. The values of â and bxᵢ̂ that minimize rᵢ are the OLS estimates we obtain from the model.
+
+In the model summary tables (tables 1-5), the table utilizes three predictors of the estimates, the P-value for the test statistic (p) and the confidence interval (CI). The intercept estimate predictor gives an estimate for the value of each predictor variable when the response variable (price ratio) is 0. The P-value for the test statistic gives the probability of a value being greater or less than t and is an indicator for the degree of certainty the predictor variable is correlated to the response variable. The confidence interval gives an indication of the standard error for each predictor variable to the 5% level. At the bottom of the tables is the number of observations for local and national newspapers of the period as well as the multiple and adjusted R² values. The R² value represents a measure of the linear relationship between the response variable and the predictor variable. The adjusted R² is a more relevant statistic as it is a measure of the linear relationship adjusted for the number of predictor variables.
+
+“Television is transmitted over two networks, the second of which, initiated in 1964, concentrates mainly on entertainment, while the first is of a more general character.” (Mills, 2003). The entertainment aspect required advertising for a sustainable revenue stream which only began redirecting advertisements from the newspapers in 1968. To test this hypothesis, I ran multiple least squares regression models of the price ratio in three periods from 1968 to 1974.
+
+The three periods were identified by the researchers as the pre TV advertisement period (1966-1969), the short-run TV advertisement period (1969-1971), and the long-run TV advertisement period (1970-1974). I divided the data set into these three groups for national and local newspapers as the implications of TV advertisements differ on this basis. To find the correlation between the price ratio between newspaper types in these periods I ran multiple OLS models comparing the correlation between each period for each newspaper type shown in Tables 2,3 and 4. 
+
+## Graph 6
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+graph6
+
+```
+<br>
+
+Graph 6 is a visualization of the linear model of the combined newspapers price ratios against the share of advertising revenue. The positive correlation implies that a decrease in the share of advertising revenues results in a decrease in the price ratio. This supports the hypothesis I investigate further in the coming sections that a decrease in the share of advertising revenues is responded to with price discrimination by the newspapers.
+
+<br><br>
+
+# Results
+
+## Table 1: National and Local newspaper model post 1968
+```{r echo=FALSE}
+
+
+
+table1
+```
+<br>
+As the researchers hypothesized in their paper, national newspapers were more affected by television advertisements as they are more reliant on commercial advertisements than local newspapers. As a result, the advertisers substituted advertising in national newspapers for TV advertisements resulting in a fall in the price ratio during the rise of TV advertisements. Utilizing an ordinary least squares (OLS) model, I calculated the correlation between the price ratio over time for both national and local newspapers. As shown in Table 1, the national newspapers show a much stronger negative correlation of price ratios to the predictor variables in the post-1968 period with an adjusted R² value of 0.212 VS the 0.103 for local newspapers. This suggests that a larger amount of the reduction in price ratio for national newspapers can be related to the predictor variables. This implies the use of price discrimination by national newspapers in response to decreased advertisement revenue due to television advertisements substituting newspaper advertisements. 
+<br><br>
+
+## Table 2: National and Local newspaper model pre TV advertisements (1966-1968)
+```{r echo=FALSE}
+table2
+
+
+```
+<br>
+
+Table 2 displays the results of the least-squares regression model on national and local newspapers price ratio in the pre TV advertisements period(1966-1968). The results show no correlation between the price ratio and year during this period for both national and local newspapers. This is made clear in the adjusted R² value row as they have R² values of 0.069 and 0.076 respectively.
+<br><br>
+
+## Table 3: National and Local newspaper model in the short-run period of TV advertisements introduction (1969-1971)
+```{r echo=FALSE}
+table3
+```
+
+<br>
+Table 3 displays the results of the least-squares regression model on national and local newspapers price ratio in the short-run TV advertisements period(1969-1971). The results show a significant correlation for national newspapers with an adjusted R² value of 0.533 as opposed to the local newspapers with an R² of 0.120. The test statistics show that this is the case to a  degree of certainty of the 5% level for the year and share of subscribers for national newspapers.
+
+<br><br>
+
+
+## Table 4: National and Local newspaper model in the long-run period of TV advertisements introduction (1972-1974)
+```{r echo=FALSE}
+table4
+```
+<br>
+
+Table 4 displays the results of the least-squares regression model on national and local newspapers price ratio in the long-run TV advertisements period(1972+). The results show a significant correlation for national newspapers in this period with an R² value of 0.288 as opposed to the local newspapers with an R² of 0.124. The reduction in price ratios during this period is less related to the predictor variables than in the short-run. This could be attributed to the newspapers adjusting to the declining advertising revenues by finding alternative revenue streams.
+
+
+<br><br>
+
+## Graph 1
+```{r echo=FALSE}
+
+
+graph1
+```
+Graph 1 is a line graph displaying the share of advertising revenue produced by local and national newspapers from 1960-1974. Consistent with our findings from the model, you can see that the general trend in the pre TV ads period is a steady increase followed by a significant drop in the short run. In the long run, the share of advertising revenues picks back up before declining again. This suggests that the newspapers found a way to recover a portion of the lost advertising revenue share in the long-run. The general trend of the graph is in decline to reaffirm that newspapers saw a decline in the proportion of advertising revenue as a result of the rise of TV advertisements. 
+
+
+
+<br><br>
+
+## Graph 2
+
+```{r echo=FALSE}
+
+
+graph2
+
+```
+Graph 2 is a line graph displaying the price ratio's of local and national newspapers from 1960-1974. Consistent with the model results, it is evident in the graph that national newspapers were more impacted by the rise of TV advertisements as they practiced a greater degree of price discrimination evident in the declining price ratio. 
+
+
+<br><br><br>
+
+## Graph 3
+
+```{r echo=FALSE}
+
+a <- plot(lmodel_local_post1968, which =1, main = "Residual plot for local newspapers post-1968 model", sub.caption= NA, caption = NA)
+
+```
+Graph 3 shows the plot of the residuals for the model for local newspapers post-1968. You can see that the residuals are correlated around the line of best fit suggesting a relatively strong correlation between the response variable and predictor variables used for the model. 
+
+
+## Graph 4
+
+```{r echo=FALSE}
+
+b <- plot(lmodel_national_post1968, which =1, main = "Residual plot for national newspapers post-1968 model", sub.caption= NA, caption = NA)
+```
+Graph 4 shows the plot of the residuals for the model for national newspapers post-1968. The limitation of the national newspaper data due to a lack of available observations is visible in this graph. The graph contains significantly fewer observations than graph 3 representing the residual plot for the same variables for local newspapers. While there is still a correlation, the correlation is much weaker than that in graph 3 due to this lack of observations available.
+
+
+## Graph 5
+
+```{r echo=FALSE}
+main_dataset %>% 
+  mutate(type = if_else(local == 1, "Local", "National")) %>% 
+  ggplot(aes(x = year, y = ra_s)) +
+  geom_point(alpha = 0.5) +
+  scale_y_continuous() +
+  labs(title = "Plot of advertising revenues share for local and national newspapers",
+    x = "Year",
+       y = "Share of Advertising Revenues (%)") +
+  facet_wrap(vars(type),
+               nrow = 2) +
+  theme_minimal() +
+  geom_vline(xintercept = 1955.5, linetype = "dashed")
+```
+Graph 5 displays the changes in the share of advertising revenue for local and national newspapers from 1960 to 1974. This graph depicts the difference between the implications TV advertisements had on national and local newspaper advertising revenue shares. While the national newspapers show a slight decline from 1966 to 1974, this decline is very slight. The decline in the share of advertising revenues is more significant concerning local newspapers. You can see the density of the plot increases towards the lower end after 1968 representing the short-run introduction of the TV advertising period. 
+
+
+# Discussion
+
+The researchers concluded that the decline in newspaper revenues resulted in second-degree price discrimination by newspapers towards consumers. Utilizing the researchers' data set, I can say that their findings are reproducible. Despite the lower degree of certainty of the correlation found using my model, the findings are identical to the researchers in identifying a statistically significant correlation between declining price ratios and declining advertising revenues. 
+
+The models produced for the three significant periods support the researchers' findings that the rise of TV advertisements influenced the newspapers to practice price discrimination towards consumers. This is evident in tables 2-4 as the correlation between the price ratio and our predictor variables are weak in the pre-TV advertisements period as shown in table 2. The relationship strengthens in the short-run period as advertisers began substituting newspaper advertisements for TV advertisements as shown in table 3. In the long-run, there is still a strong correlation; however, this relationship is weaker than that of the short-run period as newspapers were more able to react to the shock in advertising revenues. 
+
+The model shows a significant difference in the way local and national newspapers reacted to the shock in advertising revenues. This is evident as the correlation is weaker for local newspapers in each time period. This is explained to be a result of local newspaper advertisements being less commercial-based, making them more robust to the advertising revenue loss than national newspapers. This is evident in graph 1 as you can see that the decline in local newspaper advertising revenues is less significant than that experienced by national newspapers. Graph 2 gives an effective visualization of how local newspapers have practiced significantly less price discrimination relative to national newspapers as they showed a lower decline in price ratios across the same period.
+
+Despite the limited data available for national newspapers, the data is sufficient to conclude that they have been more significantly affected by the rise of TV advertisements. The response variables differ in their correlations with price ratios over different periods. The most significant response variable is the share of advertising revenues which displays a correlation with the highest degree of certainty based on having the smallest P-values in tables 1-4. I believe that this is more correlated than raw advertising revenues due to the lack of accountability for inflation in advertising revenue statistics. This varied between 3%-8% annually from 1960-1974 (MacroTrends,2020) which makes the share of advertising revenues a more relevant variable in measuring the loss of advertising revenue. The model supports this hypothesis as the share of advertising revenues is more closely correlated with the decline in price ratio to a higher degree of certainty across tables 1-4.
+
+We cannot assume that the French newspaper industry in the 1960s can be directly used to compare with today's newspaper industry for a variety of reasons. The first of which is that the digitization of newspapers has significantly changed the newspaper business model and methods of price discrimination. Newspapers have access to a much wider variety of revenue streams such as selling geopolitical data to corporations or social media advertising revenues. Another limitation in extrapolating the trends seen in the model to today's newspaper industry is that the technological era has forced newspapers to make digital news revenues its main source of revenue. "Ultimately, newspapers are experiencing a lot of change, and they are transforming in response to altering consumer demands"(Everett,2011). This change in the model makes it difficult to infer an identical outcome to the 1960s French newspaper industry; however, we should expect some similarities.
+
+The understanding of how newspapers react to revenue shocks has become more important than ever as a result of the COVID-19 pandemic. Newspapers have seen significantly reduced advertising revenues and these revenues are anticipated to continue declining. We can predict from our model of the newspaper advertising revenue shock of 1968 in France that the newspapers will react to this shock by price discriminating in an attempt to increase subscribers relative to unit buyers of newspapers. The industry has had to react to the rise of the internet by digitizing their content as physical newspaper as "U.S. newspaper circulation fell in 2018 to its lowest level since 1940, the first year with available data"(Greico,2020). This makes subscriptions more important to the business model than ever as online newspaper subscriptions as a crucial revenue stream for the industry.
+
+
+<br><br>
+
+## Code and data supporting this analysis is available at: https://github.com/mahmoud426/Final-assignment-STA304.git
+
+<br><br>
+
+# Reference List
+
+Angelucci, C., and J. Cage (2017): \Newspapers in Times of Low Advertising Revenues,"
+Discussion Paper 11414, Centre for Economic Policy Research.
+
+Gabszewicz, Jean T. “Subscription as a Price Discrimination Device.” Recherches Économiques de Louvain, 1999, 421–33. 
+
+Mills, Ian C. “BROADCAST MEDIA IN FRANCE.” Broadcast Media in France - Radio, TV, Cable. Accessed December 07, 2020. https://www.discoverfrance.net/France/DF_media-bc.shtml. 
+
+Mayhew, Freddy. “Report Predicts Five Years of Steep Global Decline for Newspaper Industry Revenue (Print and Online).” Press Gazette, September 15, 2020. https://pressgazette.co.uk/report-predicts-five-years-of-steep-global-decline-for-newspaper-industry-revenu-print-and-online/. 
+
+MacroTrends. “France Inflation Rate 1960-2020.” MacroTrends. Accessed December 5, 2020. https://www.macrotrends.net/countries/FRA/france/inflation-rate-cpi. 
+
+McElreath, Richard. Statistical Rethinking. CRC Press, 2020. 
+
+Grieco, Elizabeth. “Fast Facts about the Newspaper Industry's Financial Struggles as McClatchy Files for Bankruptcy.” Pew Research Center. Pew Research Center, May 30, 2020. https://www.pewresearch.org/fact-tank/2020/02/14/fast-facts-about-the-newspaper-industrys-financial-struggles/. 
+
+Everett, Elizabeth C. Transformation of Newspapers in the Technology Era, 2011. https://www.elon.edu/docs/e-web/academics/communications/research/vol2no2/09EverettEJFall11.pdf. 
+
+### Software and sowtware package refrences
+    @Manual{,
+    title = {RStudio: Integrated Development Environment for R},
+    author = {{RStudio Team}},
+    organization = {RStudio, PBC},
+    address = {Boston, MA},
+    year = {2020},
+    url = {http://www.rstudio.com/},
+  }
+
+    @Book{,
+    author = {Hadley Wickham},
+    title = {ggplot2: Elegant Graphics for Data Analysis},
+    publisher = {Springer-Verlag New York},
+    year = {2016},
+    isbn = {978-3-319-24277-4},
+    url = {https://ggplot2.tidyverse.org},
+  }
+
+    @Manual{,
+    title = {dplyr: A Grammar of Data Manipulation},
+    author = {Hadley Wickham and Romain François and Lionel {
+             Henry} and Kirill Müller},
+    year = {2020},
+    note = {R package version 1.0.2},
+    url = {https://CRAN.R-project.org/package=dplyr},
+  }
+  
+    @Manual{,
+    title = {patchwork: The Composer of Plots},
+    author = {Thomas Lin Pedersen},
+    year = {2020},
+    note = {R package version 1.1.0},
+    url = {https://CRAN.R-project.org/package=patchwork},
+  }
+  
+    @Manual{,
+    title = {kableExtra: Construct Complex Table with 'kable' and Pipe Syntax},
+    author = {Hao Zhu},
+    year = {2020},
+    note = {R package version 1.3.1},
+    url = {https://CRAN.R-project.org/package=kableExtra},
+  }
+  
+    @Manual{,
+    title = {haven: Import and Export 'SPSS', 'Stata' and 'SAS' Files},
+    author = {Hadley Wickham and Evan Miller},
+    year = {2020},
+    note = {R package version 2.3.1},
+    url = {https://CRAN.R-project.org/package=haven},
+  }
+  
+    @Manual{,
+    title = {qwraps2: Quick Wraps 2},
+    author = {Peter DeWitt},
+    year = {2020},
+    note = {R package version 0.5.0},
+    url = {https://CRAN.R-project.org/package=qwraps2},
+  }
+  
+    @Manual{,
+    title = {table1: Tables of Descriptive Statistics in HTML},
+    author = {Benjamin Rich},
+    year = {2020},
+    note = {R package version 1.2.1},
+    url = {https://CRAN.R-project.org/package=table1},
+  }
+
+### Dataset citation
+
+Modified BSD License (https://opensource.org/licenses/BSD-3-Clause)
+- applies to all code, scripts, programs, and SOFTWARE.  
+  This is any statements or instructions to be used directly or 
+  indirectly in a computer in order to bring about a certain result, 
+  and may include interpretive, object or source code.
+
+Creative Commons Attribution 4.0 International Public License
+(https://creativecommons.org/licenses/by/4.0/)
+- applies to databases, images, tables, text, and any other objects
+
+COPYRIGHT 2019 American Economic Association
